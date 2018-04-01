@@ -8,6 +8,7 @@ AC_PROG_CC
 
 PKG_CHECK_MODULES([DICE], [libdice >= 0.1])
 PKG_CHECK_MODULES([IRC], [libirc >= 0.1])
+PKG_CHECK_MODULES([EVENT], [libevent >= 2.0.0])
 
 AC_CHECK_HEADER_STDBOOL()
 
