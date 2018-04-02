@@ -59,7 +59,7 @@ static void network_handler(evutil_socket_t s, short what, void *data)
         }
     }
 
-    if ((what & EV_READ) == EV_WRITE) {
+    if ((what & EV_WRITE) == EV_WRITE) {
         char *message = NULL;
         size_t len = 0;
 
