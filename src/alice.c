@@ -56,7 +56,6 @@ static void network_handler(evutil_socket_t s, short what, void *data)
         ret = irc_client_read(c, buf, sizeof(buf));
         if (ret > 0) {
             irc_feed(irc, buf, ret);
-            irc_think(irc);
         }
     }
 
@@ -155,6 +154,12 @@ int main(int ac, char **av)
                 }
 
                 event_add(ev, NULL);
+            }
+
+            if (irc_client_connected(c)) {
+                irc_t irc = irc_client_irc(c);
+
+                irc_think(irc);
             }
         }
 
