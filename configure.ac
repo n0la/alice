@@ -4,7 +4,10 @@ AM_INIT_AUTOMAKE([subdir-objects])
 LT_INIT()
 AC_CONFIG_HEADERS([config.h])
 
+AC_CONFIG_MACRO_DIR([m4])
+
 AC_PROG_CC
+ACX_PTHREAD
 
 PKG_CHECK_MODULES([DICE], [libdice >= 0.1])
 PKG_CHECK_MODULES([IRC], [libirc >= 0.1])

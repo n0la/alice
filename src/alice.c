@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <event2/event.h>
 
@@ -8,14 +9,26 @@
 #include <irc/config.h>
 
 #include "alice.h"
+#include "cmd.h"
 
 static irc_config_t irc_config = NULL;
 static pa_t clients = NULL;
 static bool done = false;
-struct event_base *base = NULL;
+static struct event_base *base = NULL;
+static cmd_queue_t *queue = NULL;
+
+#define QUEUE_HANDLERS 4
+static pthread_t handlers[QUEUE_HANDLERS];
 
 void cleanup(void)
 {
+    int i = 0;
+
+    done = true;
+    for (i = 0; i < QUEUE_HANDLERS; i++) {
+        pthread_join(handlers[i], NULL);
+    }
+
     if (irc_config != NULL) {
         irc_config_free(irc_config);
     }
@@ -25,23 +38,13 @@ void cleanup(void)
     }
 
     event_base_free(base);
+    cmd_queue_free(queue);
 }
 
 static void irc_handler(irc_t irc, irc_message_t m, void *data)
 {
     irc_client_t c = (irc_client_t)data;
-    char *str = NULL;
-    size_t strlen = 0;
-
-    if (irc_message_is(m, IRC_COMMAND_PRIVMSG)) {
-        /* TODO
-         */
-    }
-
-    if (irc_message_string(m, &str, &strlen) == irc_error_success) {
-        printf("%s", str);
-        free(str);
-    }
+    cmd_queue(queue, c, m);
 }
 
 static void network_handler(evutil_socket_t s, short what, void *data)
@@ -64,6 +67,7 @@ static void network_handler(evutil_socket_t s, short what, void *data)
         size_t len = 0;
 
         if (irc_pop(irc, &message, &len) == irc_error_success) {
+            printf("<< %s", message);
             ret = irc_client_write(c, message, len);
         }
 
@@ -84,6 +88,21 @@ static void network_handler(evutil_socket_t s, short what, void *data)
     }
 }
 
+static void *queue_handler(void *args)
+{
+    cmd_queue_t *q = (cmd_queue_t*)args;
+
+    while (!done) {
+        pthread_mutex_lock(&q->mutex);
+        while (!cmd_handle(q, q)) {
+            pthread_cond_wait(&q->cond, &q->mutex);
+        }
+        pthread_mutex_unlock(&q->mutex);
+    }
+
+    return NULL;
+}
+
 int main(int ac, char **av)
 {
     irc_error_t ret = irc_error_success;
@@ -94,6 +113,11 @@ int main(int ac, char **av)
 
     clients = pa_new_full((free_t)irc_client_free);
     if (clients == NULL) {
+        return 3;
+    }
+
+    queue = cmd_queue_new();
+    if (queue == NULL) {
         return 3;
     }
 
@@ -118,6 +142,10 @@ int main(int ac, char **av)
     base = event_base_new();
     if (base == NULL) {
         return 3;
+    }
+
+    for (i = 0; i < QUEUE_HANDLERS; i++) {
+        pthread_create(handlers + i, NULL, queue_handler, queue);
     }
 
     for (i = 0; i < networks->vlen; i++) {
@@ -158,7 +186,6 @@ int main(int ac, char **av)
 
             if (irc_client_connected(c)) {
                 irc_t irc = irc_client_irc(c);
-
                 irc_think(irc);
             }
         }
