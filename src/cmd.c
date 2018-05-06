@@ -1,9 +1,22 @@
 #include "cmd.h"
 
-cmd_t cmds[] = {
-    alice_nickreclaimer,
-    alice_login,
-    NULL,
+#include <irc/pa.h>
+#include <ctype.h>
+
+typedef struct {
+    char const *command;
+    cmd_handler_t handler;
+} cmd_entry_t;
+
+static cmd_entry_t cmds[] = {
+    /* NULL means that they take all messages
+     */
+    { NULL, alice_nickreclaimer },
+    { NULL, alice_login },
+
+    /* end marker
+     */
+    { NULL, NULL },
 };
 
 cmd_queue_t * cmd_queue_new(void)
@@ -81,7 +94,8 @@ bool cmd_queue(cmd_queue_t *q, irc_client_t c, irc_message_t m)
 bool cmd_handle(cmd_queue_t *q, void *arg)
 {
     cmd_queue_item_t *it = NULL;
-    cmd_t *c = NULL;
+    cmd_entry_t *c = NULL;
+    cmd_t *cmd = NULL;
     char *s = NULL;
     size_t slen = 0;
 
@@ -98,10 +112,148 @@ bool cmd_handle(cmd_queue_t *q, void *arg)
     printf("[%p] %s", pthread_self(), s);
     free(s);
 
-    for (c = cmds; *c != NULL; c++) {
-        (*c)(it->client, it->message, arg);
+    if (irc_message_is(it->message, IRC_COMMAND_PRIVMSG) &&
+        it->message->argslen >= 2) {
+        cmd = cmd_parse(it->message->args[1]);
+    }
+
+    for (c = cmds; c->handler != NULL; c++) {
+        if (cmd == NULL && c->command == NULL) {
+            c->handler(it->client, it->message, cmd, arg);
+        }
+
+        if (cmd != NULL && cmd->command != NULL && c->command != NULL &&
+            strcmp(cmd->command, c->command) == 0) {
+            c->handler(it->client, it->message, cmd, arg);
+        }
     }
 
     cmd_queue_item_free(it);
+    cmd_free(cmd);
+
     return true;
+}
+
+void cmd_free(cmd_t *c)
+{
+    size_t i = 0;
+
+    if (c == NULL) {
+        return;
+    }
+
+    free(c->command);
+    c->command = NULL;
+
+    if (c->argv != NULL) {
+        for (i = 0; i < c->argc; i++) {
+            free(c->argv[i]);
+        }
+        free(c->argv);
+        c->argv = NULL;
+    }
+}
+
+cmd_t *cmd_parse(char const *message)
+{
+    size_t len = 0, i = 0;
+    cmd_t *cmd = NULL;
+    char *cur = NULL;
+    size_t curlen = 0;
+    FILE *str = NULL;
+    pa_t args = NULL;
+    bool inquote = false;
+    char c = 0, prev = 0;
+
+    enum {
+        do_ignore,
+        do_add,
+        do_finish,
+    } what;
+
+    if (message == NULL || strlen(message) == 0 || message[0] != '#') {
+        return NULL;
+    }
+
+    len = strlen(message);
+    cmd = calloc(1, sizeof(cmd_t));
+    if (cmd == NULL) {
+        return NULL;
+    }
+
+    args = pa_new();
+    if (args == NULL) {
+        free(cmd);
+        return NULL;
+    }
+
+    for (i = 0; i < len; i++) {
+        prev = c;
+        c = message[i];
+        what = do_ignore;
+
+        if (str == NULL) {
+            str = open_memstream(&cur, &curlen);
+        }
+
+        if (c == '"') {
+            if (prev == '\\') {
+                what = do_add;
+            } else {
+                inquote = !inquote;
+                if (!inquote) {
+                    what = do_finish;
+                }
+            }
+        } else if (isspace(c)) {
+            what = (inquote ? do_add : do_finish);
+            if (what == do_finish && isspace(prev)) {
+                what = do_ignore;
+            }
+        } else {
+            what = do_add;
+        }
+
+        switch (what) {
+        case do_add: fputc(c, str); break;
+        case do_finish:
+        {
+            fclose(str);
+            if (cmd->command == NULL) {
+                cmd->command = cur;
+            } else {
+                if (strlen(cur) > 0) {
+                    pa_add(args, cur);
+                }
+            }
+            cur = NULL;
+
+            str = open_memstream(&cur, &curlen);
+        } break;
+        case do_ignore: /* intentional */
+        default: break;
+        }
+    }
+
+    fclose(str);
+    if (cmd->command == NULL) {
+        cmd->command = cur;
+    } else {
+        if (strlen(cur) > 0) {
+            pa_add(args, cur);
+        }
+    }
+    cur = NULL;
+
+    /* steal pointer
+     */
+    cmd->argv = (char **)args->v;
+    cmd->argc = args->vlen;
+    args->v = NULL;
+    args->vlen = 0;
+
+    pa_free(args);
+    args = NULL;
+
+    return cmd;
 }

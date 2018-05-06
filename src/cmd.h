@@ -20,12 +20,22 @@ typedef struct {
     irc_message_t message;
 } cmd_queue_item_t;
 
-typedef int (*cmd_t)(irc_client_t client, irc_message_t m, void *arg);
+typedef struct {
+    char *command;
+    char **argv;
+    int argc;
+} cmd_t;
 
-extern cmd_t cmds[];
+typedef int (*cmd_handler_t)(irc_client_t client, irc_message_t m,
+                             cmd_t const *cmd, void *arg);
 
-int alice_nickreclaimer(irc_client_t client, irc_message_t m, void *arg);
-int alice_login(irc_client_t client, irc_message_t m, void *arg);
+int alice_nickreclaimer(irc_client_t client, irc_message_t m,
+                        cmd_t const *cmd, void *arg);
+int alice_login(irc_client_t client, irc_message_t m,
+                cmd_t const *cmd, void *arg);
+
+void cmd_free(cmd_t *cmd);
+cmd_t *cmd_parse(char const *message);
 
 cmd_queue_t *cmd_queue_new(void);
 void cmd_queue_free(cmd_queue_t *q);

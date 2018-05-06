@@ -1,7 +1,8 @@
 #include "alice.h"
 #include "cmd.h"
 
-int alice_login(irc_client_t client, irc_message_t m, void *arg)
+int alice_login(irc_client_t client, irc_message_t m,
+                cmd_t const *cmd, void *arg)
 {
     irc_message_t r = NULL;
     irc_config_network_t c = irc_client_config(client);
