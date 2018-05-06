@@ -29,13 +29,22 @@ typedef struct {
 typedef int (*cmd_handler_t)(irc_client_t client, irc_message_t m,
                              cmd_t const *cmd, void *arg);
 
+/* reclaims nick name if 443 error happens.
+ */
 int alice_nickreclaimer(irc_client_t client, irc_message_t m,
                         cmd_t const *cmd, void *arg);
+/* logs in using nickserv
+ */
 int alice_login(irc_client_t client, irc_message_t m,
                 cmd_t const *cmd, void *arg);
+/* rolls dice
+ */
+int alice_dice(irc_client_t client, irc_message_t m,
+               cmd_t const *cmd, void *arg);
 
 void cmd_free(cmd_t *cmd);
 cmd_t *cmd_parse(char const *message);
+char *cmd_concat(cmd_t const *cmd);
 
 cmd_queue_t *cmd_queue_new(void);
 void cmd_queue_free(cmd_queue_t *q);

@@ -4,7 +4,8 @@ alice_SOURCES =		src/alice.c \
 			src/cmd.h \
 			src/cmd.c \
 			src/nickreclaimer.c \
-			src/login.c
+			src/login.c \
+			src/dice.c
 
 ACLOCAL_AMFLAGS =	-Im4
 

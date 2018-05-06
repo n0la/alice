@@ -13,7 +13,10 @@ static cmd_entry_t cmds[] = {
      */
     { NULL, alice_nickreclaimer },
     { NULL, alice_login },
-
+    /* roll dices
+     */
+    { "roll", alice_dice },
+    { "dice", alice_dice },
     /* end marker
      */
     { NULL, NULL },
@@ -171,7 +174,7 @@ cmd_t *cmd_parse(char const *message)
         do_finish,
     } what;
 
-    if (message == NULL || strlen(message) == 0 || message[0] != '#') {
+    if (message == NULL || strlen(message) < 1 || message[0] != '#') {
         return NULL;
     }
 
@@ -187,7 +190,9 @@ cmd_t *cmd_parse(char const *message)
         return NULL;
     }
 
-    for (i = 0; i < len; i++) {
+    /* skip #
+     */
+    for (i = 1; i < len; i++) {
         prev = c;
         c = message[i];
         what = do_ignore;
@@ -256,4 +261,28 @@ cmd_t *cmd_parse(char const *message)
     args = NULL;
 
     return cmd;
+}
+
+char *cmd_concat(cmd_t const *cmd)
+{
+    FILE *s = NULL;
+    char *buf = NULL;
+    size_t buflen = 0;
+    int i = 0;
+
+    if (cmd == NULL) {
+        return NULL;
+    }
+
+    s = open_memstream(&buf, &buflen);
+    if (s == NULL) {
+        return NULL;
+    }
+
+    for (i = 0; i < cmd->argc; i++) {
+        fprintf(s, "%s", cmd->argv[i]);
+    }
+
+    fclose(s);
+    return buf;
 }
