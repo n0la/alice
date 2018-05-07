@@ -99,8 +99,6 @@ bool cmd_handle(cmd_queue_t *q, void *arg)
     cmd_queue_item_t *it = NULL;
     cmd_entry_t *c = NULL;
     cmd_t *cmd = NULL;
-    char *s = NULL;
-    size_t slen = 0;
 
     if (q == NULL) {
         return false;
@@ -110,10 +108,6 @@ bool cmd_handle(cmd_queue_t *q, void *arg)
     if (it == NULL) {
         return false;
     }
-
-    irc_message_string(it->message, &s, &slen);
-    printf("[%p] %s", pthread_self(), s);
-    free(s);
 
     if (irc_message_is(it->message, IRC_COMMAND_PRIVMSG) &&
         it->message->argslen >= 2) {
