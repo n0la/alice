@@ -31,10 +31,12 @@ void cleanup(void)
 
     if (irc_config != NULL) {
         irc_config_free(irc_config);
+        irc_config = NULL;
     }
 
     if (clients != NULL) {
         pa_free(clients);
+        clients = NULL;
     }
 
     event_base_free(base);
