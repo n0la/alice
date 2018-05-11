@@ -34,7 +34,6 @@ int alice_dice(irc_client_t client, irc_message_t m,
 
 end:
 
-    printf("'%s' = %d\n", argstr, error);
     dice_expression_free(expr);
     free(argstr);
 
