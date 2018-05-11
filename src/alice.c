@@ -203,7 +203,7 @@ int main(int ac, char **av)
         /* loop once
          */
         ret = event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
-        if (ret < 0) {
+        if (ret <= 0) {
             break;
         } else if (ret > 1) {
             usleep(10 * 1000);
