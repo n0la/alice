@@ -10,6 +10,7 @@
 
 #include "alice.h"
 #include "cmd.h"
+#include "log.h"
 
 static irc_config_t irc_config = NULL;
 static pa_t clients = NULL;
@@ -75,7 +76,6 @@ static void network_handler(evutil_socket_t s, short what, void *data)
         size_t len = 0;
 
         if (irc_pop(irc, &message, &len) == irc_error_success) {
-            printf("<< %s", message);
             ret = irc_client_write(c, message, len);
         }
 
@@ -113,6 +113,7 @@ int main(int ac, char **av)
     int i = 0, r = 0;
 
     atexit(cleanup);
+    openlog("alice", 0, LOG_USER);
 
     clients = pa_new_full((free_t)irc_client_free);
     if (clients == NULL) {
