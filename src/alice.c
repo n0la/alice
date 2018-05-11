@@ -80,6 +80,7 @@ static void network_handler(evutil_socket_t s, short what, void *data)
         }
 
         free(message);
+        message = NULL;
     }
 
     if (ret >= 0) {
@@ -109,7 +110,7 @@ int main(int ac, char **av)
 {
     irc_error_t ret = irc_error_success;
     pa_t networks = NULL;
-    int i = 0;
+    int i = 0, r = 0;
 
     atexit(cleanup);
 
@@ -202,8 +203,8 @@ int main(int ac, char **av)
 
         /* loop once
          */
-        ret = event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
-        if (ret <= 0) {
+        r = event_base_loop(base, EVLOOP_ONCE | EVLOOP_NONBLOCK);
+        if (r < 0) {
             break;
         } else if (ret > 1) {
             usleep(10 * 1000);
