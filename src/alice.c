@@ -47,9 +47,15 @@ static void irc_handler(irc_t irc, irc_message_t m, void *data)
     cmd_queue(queue, c, m);
 }
 
+typedef struct {
+    irc_client_t client;
+    struct event *event;
+} handler_data_t;
+
 static void network_handler(evutil_socket_t s, short what, void *data)
 {
-    irc_client_t c = (irc_client_t)data;
+    handler_data_t *d = (handler_data_t*)data;
+    irc_client_t c = (irc_client_t)d->client;
     irc_t irc = irc_client_irc(c);
     int ret = 0;
 
@@ -75,16 +81,10 @@ static void network_handler(evutil_socket_t s, short what, void *data)
     }
 
     if (ret >= 0) {
-        /* attach the event again.
-         */
-        struct event *ev = NULL;
-
-        ev = event_new(base, s, EV_READ | EV_WRITE, network_handler, c);
-        if (ev == NULL) {
-            return;
-        }
-
-        event_add(ev, NULL);
+        event_add(d->event, NULL);
+    } else {
+        event_del(d->event);
+        free(d);
     }
 }
 
@@ -171,12 +171,20 @@ int main(int ac, char **av)
             if (!irc_client_connected(c) &&
                 irc_client_connect(c) == irc_error_success) {
                 struct event *ev = NULL;
+                handler_data_t *data = calloc(1, sizeof(handler_data_t));
+
+                if (data == NULL) {
+                    continue;
+                }
+
+                data->client = c;
 
                 ev = event_new(base, irc_client_socket(c),
                                EV_READ | EV_WRITE,
                                network_handler,
-                               c
+                               data
                     );
+                data->event = ev;
                 if (ev == NULL) {
                     return 3;
                 }
