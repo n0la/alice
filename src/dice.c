@@ -11,6 +11,9 @@ int alice_dice(irc_client_t client, irc_message_t m,
     irc_message_t reply = NULL;
     int64_t result = 0;
     int error = 0;
+    char *nick = NULL;
+
+    irc_getopt(irc_client_irc(client), ircopt_nick, &nick);
 
     if (argstr == NULL) {
         goto end;
@@ -29,7 +32,7 @@ int alice_dice(irc_client_t client, irc_message_t m,
         goto end;
     }
 
-    reply = irc_message_privmsg(m->args[0], "%s: %ld", argstr, result);
+    reply = irc_message_privmsg(nick, m->args[0], "%s: %ld", argstr, result);
     irc_queue(irc_client_irc(client), reply);
 
 end:
