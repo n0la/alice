@@ -32,6 +32,7 @@ cmd_queue_t * cmd_queue_new(void)
 
     q->queue = irc_queue_new();
     if (q->queue == NULL) {
+        free(q);
         return NULL;
     }
 
@@ -149,6 +150,8 @@ void cmd_free(cmd_t *c)
         free(c->argv);
         c->argv = NULL;
     }
+
+    free(c);
 }
 
 cmd_t *cmd_parse(char const *message)
