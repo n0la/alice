@@ -10,7 +10,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_CC
 AX_PTHREAD
 
-PKG_CHECK_MODULES([DICE], [libdice >= 0.1])
+PKG_CHECK_MODULES([DICE], [libdice >= 0.2])
 PKG_CHECK_MODULES([IRC], [libirc >= 0.1])
 PKG_CHECK_MODULES([EVENT], [libevent >= 2.0.0])
 
