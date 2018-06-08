@@ -1,16 +1,11 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-
-#include <event2/event.h>
-
-#include <irc/irc.h>
-#include <irc/client.h>
-#include <irc/config.h>
-
 #include "alice.h"
 #include "cmd.h"
 #include "log.h"
+#include "plugin.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
 static irc_config_t irc_config = NULL;
 static pa_t clients = NULL;
@@ -136,6 +131,9 @@ int main(int ac, char **av)
                 irc_config_error_string(irc_config));
         return 3;
     }
+
+    alice_plugin_register_default();
+    alice_plugin_loadall();
 
     networks = irc_config_networks(irc_config);
     if (networks == NULL || networks->vlen == 0) {

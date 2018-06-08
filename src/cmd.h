@@ -1,10 +1,7 @@
 #ifndef ALICE_CMD_H
 #define ALICE_CMD_H
 
-#include <irc/irc.h>
-#include <irc/client.h>
-#include <irc/config.h>
-#include <irc/queue.h>
+#include "alice.h"
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -23,6 +20,7 @@ typedef struct {
 typedef struct {
     char *command;
     char **argv;
+    char *sender;
     int argc;
 } cmd_t;
 
@@ -37,13 +35,9 @@ int alice_nickreclaimer(irc_client_t client, irc_message_t m,
  */
 int alice_login(irc_client_t client, irc_message_t m,
                 cmd_t const *cmd, void *arg);
-/* rolls dice
- */
-int alice_dice(irc_client_t client, irc_message_t m,
-               cmd_t const *cmd, void *arg);
 
 void cmd_free(cmd_t *cmd);
-cmd_t *cmd_parse(char const *message);
+cmd_t *cmd_parse(char const *message, char const *sender);
 char *cmd_concat(cmd_t const *cmd);
 
 cmd_queue_t *cmd_queue_new(void);

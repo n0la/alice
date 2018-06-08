@@ -2,25 +2,7 @@
 
 #include <irc/pa.h>
 #include <ctype.h>
-
-typedef struct {
-    char const *command;
-    cmd_handler_t handler;
-} cmd_entry_t;
-
-static cmd_entry_t cmds[] = {
-    /* NULL means that they take all messages
-     */
-    { NULL, alice_nickreclaimer },
-    { NULL, alice_login },
-    /* roll dices
-     */
-    { "roll", alice_dice },
-    { "dice", alice_dice },
-    /* end marker
-     */
-    { NULL, NULL },
-};
+#include "plugin.h"
 
 cmd_queue_t * cmd_queue_new(void)
 {
@@ -98,7 +80,6 @@ bool cmd_queue(cmd_queue_t *q, irc_client_t c, irc_message_t m)
 bool cmd_handle(cmd_queue_t *q, void *arg)
 {
     cmd_queue_item_t *it = NULL;
-    cmd_entry_t *c = NULL;
     cmd_t *cmd = NULL;
 
     if (q == NULL) {
@@ -112,18 +93,13 @@ bool cmd_handle(cmd_queue_t *q, void *arg)
 
     if (irc_message_is(it->message, IRC_COMMAND_PRIVMSG) &&
         it->message->argslen >= 2) {
-        cmd = cmd_parse(it->message->args[1]);
+        cmd = cmd_parse(it->message->args[1], it->message->args[0]);
     }
 
-    for (c = cmds; c->handler != NULL; c++) {
-        if (cmd == NULL && c->command == NULL) {
-            c->handler(it->client, it->message, cmd, arg);
-        }
-
-        if (cmd != NULL && cmd->command != NULL && c->command != NULL &&
-            strcmp(cmd->command, c->command) == 0) {
-            c->handler(it->client, it->message, cmd, arg);
-        }
+    if (cmd != NULL) {
+        alice_handle_command(it->client, cmd);
+    } else {
+        alice_handle_message(it->client, it->message);
     }
 
     cmd_queue_item_free(it);
@@ -143,6 +119,9 @@ void cmd_free(cmd_t *c)
     free(c->command);
     c->command = NULL;
 
+    free(c->sender);
+    c->sender = NULL;
+
     if (c->argv != NULL) {
         for (i = 0; i < c->argc; i++) {
             free(c->argv[i]);
@@ -154,7 +133,7 @@ void cmd_free(cmd_t *c)
     free(c);
 }
 
-cmd_t *cmd_parse(char const *message)
+cmd_t *cmd_parse(char const *message, char const *sender)
 {
     size_t len = 0, i = 0;
     cmd_t *cmd = NULL;
@@ -247,6 +226,7 @@ cmd_t *cmd_parse(char const *message)
     }
     cur = NULL;
 
+    cmd->sender = strdup(sender);
     /* steal pointer
      */
     cmd->argv = (char **)args->v;

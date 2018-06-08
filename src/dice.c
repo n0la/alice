@@ -1,10 +1,15 @@
 #include "alice.h"
-#include "cmd.h"
+#include "plugin.h"
 
 #include <dice.h>
 
-int alice_dice(irc_client_t client, irc_message_t m,
-               cmd_t const *cmd, void *arg)
+static bool dice_handles(char const *cmd)
+{
+    return (strcmp(cmd, "roll") == 0 ||
+            strcmp(cmd, "dice") == 0);
+}
+
+static int dice_perform(void *arg, irc_client_t client, cmd_t const *cmd)
 {
     char *argstr = cmd_concat(cmd);
     dice_expression_t expr = NULL;
@@ -32,7 +37,7 @@ int alice_dice(irc_client_t client, irc_message_t m,
         goto end;
     }
 
-    reply = irc_message_privmsg(nick, m->args[0], "%s: %ld", argstr, result);
+    reply = irc_message_privmsg(nick, cmd->sender, "%s: %ld", argstr, result);
     irc_queue(irc_client_irc(client), reply);
 
 end:
@@ -42,3 +47,12 @@ end:
 
     return 0;
 }
+
+alice_plugin_t dice_plugin = {
+    "dice",
+    NULL,
+    NULL,
+    dice_handles,
+    dice_perform,
+    NULL
+};

@@ -13,9 +13,10 @@ SET(SOURCES
   "src/alice.h"
   "src/cmd.h"
   "src/cmd.c"
-  "src/nickreclaimer.c"
-  "src/login.c"
   "src/dice.c"
+  "src/nickserv.c"
+  "src/plugin.h"
+  "src/plugin.c"
   )
 
 INCLUDE_DIRECTORIES(${DICE_INCLUDE_DIRS}
