@@ -1,5 +1,5 @@
-#include "alice.h"
-#include "plugin.h"
+#include <alice.h>
+#include <plugin.h>
 
 #include <dice.h>
 

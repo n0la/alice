@@ -1,5 +1,5 @@
-#include "alice.h"
-#include "plugin.h"
+#include <alice.h>
+#include <plugin.h>
 
 static int nickserv_login(void * arg, irc_client_t client, irc_message_t m)
 {

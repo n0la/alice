@@ -10,19 +10,30 @@ PKG_CHECK_MODULES(EVENT libevent REQUIRED)
 SET(TARGET "alice")
 SET(SOURCES
   "src/alice.c"
-  "src/alice.h"
-  "src/cmd.h"
   "src/cmd.c"
-  "src/dice.c"
-  "src/nickserv.c"
-  "src/plugin.h"
   "src/plugin.c"
   )
 
-INCLUDE_DIRECTORIES(${DICE_INCLUDE_DIRS}
-  ${IRC_INCLUDE_DIRS} ${EVENT_INCLUDE_DIRS})
+SET(HEADERS
+  "include/alice.h"
+  "include/cmd.h"
+  "include/log.h"
+  "include/plugin.h"
+  )
 
-ADD_EXECUTABLE(${TARGET} ${SOURCES})
+SET(PLUGINS
+  "src/plugins/dice.c"
+  "src/plugins/nickserv.c"
+  )
+
+INCLUDE_DIRECTORIES(
+  ${DICE_INCLUDE_DIRS}
+  ${IRC_INCLUDE_DIRS}
+  ${EVENT_INCLUDE_DIRS}
+  "${CMAKE_SOURCE_DIR}/include"
+  )
+
+ADD_EXECUTABLE(${TARGET} ${SOURCES} ${PLUGINS} ${HEADERS})
 TARGET_LINK_LIBRARIES(${TARGET}
   ${DICE_LIBRARIES} ${IRC_LIBRARIES}
   ${EVENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
