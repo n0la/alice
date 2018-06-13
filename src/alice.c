@@ -2,6 +2,7 @@
 #include "cmd.h"
 #include "log.h"
 #include "plugin.h"
+#include "yamlconfig.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -12,6 +13,8 @@ static pa_t clients = NULL;
 static bool done = false;
 static struct event_base *base = NULL;
 static cmd_queue_t *queue = NULL;
+
+static yaml_config_t config = NULL;
 
 #define QUEUE_HANDLERS 4
 static pthread_t handlers[QUEUE_HANDLERS];
@@ -101,6 +104,37 @@ static void *queue_handler(void *args)
     return NULL;
 }
 
+static bool load_configs(void)
+{
+    irc_error_t ret = irc_error_success;
+
+    irc_config = irc_config_new();
+    if (irc_config == NULL) {
+        return false;
+    }
+
+    ret = irc_config_load_file(irc_config, ALICE_IRC_CONFIG);
+    if (ret != irc_error_success) {
+        fprintf(stderr, "failed to load IRC config file: %s\n",
+                irc_config_error_string(irc_config));
+        return false;
+    }
+
+    config = yaml_config_new();
+    if (config == NULL) {
+        return false;
+    }
+
+    if (!yaml_config_load_file(config, ALICE_CONFIG)) {
+        fprintf(stderr, "failed to load alice.yml configuration file\n");
+        return false;
+    }
+
+    yaml_config_lookup(config, "plugins.nickserv.nick");
+
+    return true;
+}
+
 int main(int ac, char **av)
 {
     irc_error_t ret = irc_error_success;
@@ -120,15 +154,7 @@ int main(int ac, char **av)
         return 3;
     }
 
-    irc_config = irc_config_new();
-    if (irc_config == NULL) {
-        return 3;
-    }
-
-    ret = irc_config_load_file(irc_config, ALICE_IRC_CONFIG);
-    if (ret != irc_error_success) {
-        fprintf(stderr, "failed to load IRC config file: %s\n",
-                irc_config_error_string(irc_config));
+    if (!load_configs()) {
         return 3;
     }
 
