@@ -3,9 +3,10 @@
 
 #include "alice.h"
 #include "cmd.h"
+#include "yamlconfig.h"
 #include <stdbool.h>
 
-typedef void * (*alice_plugin_new)(void);
+typedef void * (*alice_plugin_new)(yaml_config_t c);
 typedef void (*alice_plugin_free)(void*);
 typedef bool (*alice_plugin_handles)(char const *cmd);
 typedef int (*alice_plugin_command)(void*, irc_client_t, cmd_t const *);
@@ -24,6 +25,10 @@ typedef struct {
     void *arg;
     alice_plugin_t *plugin;
 } alice_loaded_t;
+
+bool alice_plugin_init(void);
+void alice_plugin_deinit(void);
+bool alice_plugin_load(void);
 
 int alice_plugin_register(alice_plugin_t *p);
 int alice_plugin_register_default(void);

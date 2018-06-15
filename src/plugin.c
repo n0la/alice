@@ -1,12 +1,52 @@
 #include "plugin.h"
 #include "log.h"
-#include <irc/pa.h>
+#include "yamlconfig.h"
 
 static pa_t plugin_registry = NULL;
 static pa_t plugin_loaded = NULL;
+static yaml_config_t plugins = NULL;
 
 extern alice_plugin_t dice_plugin;
 extern alice_plugin_t nickserv_plugin;
+
+void alice_plugin_deinit(void)
+{
+    alice_plugin_unloadall();
+    yaml_config_free(plugins);
+    plugins = NULL;
+}
+
+bool alice_plugin_init(void)
+{
+    if (plugins != NULL) {
+        return true;
+    }
+
+    plugins = yaml_config_new();
+    if (plugins == NULL) {
+        return false;
+    }
+
+    if (!yaml_config_load_file(plugins, ALICE_PLUGINS_CONFIG)) {
+        ALICE_ERROR("failed to load plugin configuration file: %s",
+                    yaml_config_strerror(plugins)
+            );
+        goto fail;
+    }
+
+    if (!yaml_config_is_mapping(plugins)) {
+        ALICE_ERROR("root node of plugins configuration is not a mapping");
+        goto fail;
+    }
+
+    return true;
+
+fail:
+
+    yaml_config_free(plugins);
+    plugins = NULL;
+    return false;
+}
 
 int alice_plugin_register_default(void)
 {
@@ -51,40 +91,77 @@ int alice_plugin_unloadall(void)
     plugin_loaded = NULL;
 }
 
-int alice_plugin_loadall(void)
+static bool alice_plugin_loadone(alice_plugin_t *p, yaml_config_t config)
 {
-    size_t i = 0;
+    void *arg = NULL;
+    alice_loaded_t *l = NULL;
 
     if (plugin_loaded == NULL) {
         plugin_loaded = pa_new_full(plugin_unload);
         if (plugin_loaded == NULL) {
-            return 3;
+            return false;
         }
     }
 
-    for (i = 0; i < plugin_registry->vlen; i++) {
-        void *arg = NULL;
-        alice_plugin_t *p = (alice_plugin_t*)plugin_registry->v[i];
-        alice_loaded_t *l = NULL;
+    if (p->new != NULL) {
+        arg = p->new(config);
+        if (arg == NULL) {
+            ALICE_ERROR("failed to load plugin %s, skipping", p->name);
+            return false;
+        }
+    }
 
-        if (p->new != NULL) {
-            arg = p->new();
-            if (arg == NULL) {
-                ALICE_ERROR("failed to load plugin %s, skipping", p->name);
-                continue;
+    l = calloc(1, sizeof(alice_loaded_t));
+    if (l == NULL) {
+        ALICE_ERROR("oom while loading plugin %s", p->name);
+        if (p->free) {
+            p->free(arg);
+        }
+        return false;
+    }
+
+    l->arg = arg;
+    l->plugin = p;
+
+    pa_add(plugin_loaded, l);
+    ALICE_DEBUG("plugin %s successfully loaded", p->name);
+
+    return true;
+}
+
+bool alice_plugin_load(void)
+{
+    char *node = NULL;
+    yaml_config_t child = NULL;
+    yaml_config_iterator_t it = NULL;
+    size_t i = 0;
+
+    if (plugins == NULL) {
+        ALICE_WARN("no plugins to load");
+        return false;
+    }
+
+    while (yaml_config_mapping_next(plugins, &it, &node, &child)) {
+        /* find node in the list of our plugins
+         */
+        for (i = 0; i < plugin_registry->vlen; i++) {
+            alice_plugin_t *p = (alice_plugin_t*)plugin_registry->v[i];
+            if (strcmp(p->name, node) == 0) {
+                alice_plugin_loadone(p, child);
             }
         }
 
-        l = calloc(1, sizeof(alice_loaded_t));
-        if (l == NULL) {
-            ALICE_ERROR("oom while loading plugin %s", p->name);
-            break;
-        }
+        yaml_config_free(child);
+    }
+}
 
-        l->arg = arg;
-        l->plugin = p;
+int alice_plugin_loadall(void)
+{
+    size_t i = 0;
 
-        pa_add(plugin_loaded, l);
+    for (i = 0; i < plugin_registry->vlen; i++) {
+        alice_plugin_t *p = (alice_plugin_t*)plugin_registry->v[i];
+        alice_plugin_loadone(p, NULL);
     }
 }
 

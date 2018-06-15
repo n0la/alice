@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "yamlconfig.h"
 #include <yaml.h>
 
@@ -6,6 +7,7 @@ struct yaml_config_
     yaml_document_t *doc;
     yaml_node_t *root;
     bool weak;
+    char *error;
 };
 
 yaml_config_t yaml_config_new(void)
@@ -24,6 +26,7 @@ void yaml_config_free(yaml_config_t c)
         c->doc = NULL;
     }
 
+    free(c->error);
     free(c);
 }
 
@@ -102,6 +105,15 @@ yaml_config_t yaml_config_lookup(yaml_config_t conf, char const *path)
     return ret;
 }
 
+char const *yaml_config_strerror(yaml_config_t conf)
+{
+    if (conf == NULL) {
+        return "argument error";
+    }
+
+    return (conf->error == NULL ? "no error" : conf->error);
+}
+
 static bool yaml_config_load(yaml_config_t conf, FILE *f)
 {
     yaml_parser_t parser;
@@ -124,6 +136,10 @@ static bool yaml_config_load(yaml_config_t conf, FILE *f)
     yaml_parser_set_input_file(&parser, f);
 
     if (!yaml_parser_load(&parser, conf->doc)) {
+        free(conf->error);
+        asprintf(&conf->error, "offset: %d: %s",
+                 parser.problem_offset, parser.problem
+            );
         goto fail;
     }
 
@@ -185,4 +201,45 @@ bool yaml_config_is_mapping(yaml_config_t c)
         return false;
     }
     return (c->root->type == YAML_MAPPING_NODE);
+}
+
+bool yaml_config_mapping_next(yaml_config_t conf, yaml_config_iterator_t *it,
+                              char **key, yaml_config_t *child)
+{
+    yaml_node_pair_t *pair = NULL;
+    yaml_node_t *k = NULL, *v = NULL;
+    yaml_config_t tmp = NULL;
+
+    if (!yaml_config_is_mapping(conf)) {
+        return false;
+    }
+
+    if ((*it) != NULL) {
+        pair = (yaml_node_pair_t*)*it;
+    } else {
+        pair = conf->root->data.mapping.pairs.start;
+    }
+
+    if (pair >= conf->root->data.mapping.pairs.top) {
+        return false;
+    }
+
+    k = yaml_document_get_node(conf->doc, pair->key);
+    v = yaml_document_get_node(conf->doc, pair->value);
+
+    if ((tmp = yaml_config_new()) == NULL) {
+        return false;
+    }
+
+    tmp->doc = conf->doc;
+    tmp->root = v;
+    tmp->weak = true;
+
+    *key = (char*)k->data.scalar.value;
+    *child = tmp;
+
+    ++pair;
+    *it = pair;
+
+    return true;
 }

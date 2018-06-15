@@ -4,9 +4,9 @@
 #include "alice.h"
 #include <syslog.h>
 
-#define ALICE_WARN(fmt, args...)  (syslog(LOG_WARNING, fmt, args))
-#define ALICE_DEBUG(fmt, args...) (syslog(LOG_DEBUG, fmt, args))
-#define ALICE_INFO(fmt, args...)  (syslog(LOG_INFO, fmt, args))
-#define ALICE_ERROR(fmt, args...) (syslog(LOG_ERR, fmt, args))
+#define ALICE_WARN(fmt, ...)  (syslog(LOG_WARNING, fmt, ##__VA_ARGS__))
+#define ALICE_DEBUG(fmt, ...) (syslog(LOG_DEBUG, fmt, ##__VA_ARGS__))
+#define ALICE_INFO(fmt, ...)  (syslog(LOG_INFO, fmt, ##__VA_ARGS__))
+#define ALICE_ERROR(fmt, ...) (syslog(LOG_ERR, fmt, ##__VA_ARGS__))
 
 #endif

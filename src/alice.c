@@ -38,8 +38,13 @@ void cleanup(void)
         clients = NULL;
     }
 
-    event_base_free(base);
+    if (base != NULL) {
+        event_base_free(base);
+    }
     cmd_queue_free(queue);
+    yaml_config_free(config);
+
+    alice_plugin_deinit();
 }
 
 static void irc_handler(irc_t irc, irc_message_t m, void *data)
@@ -130,8 +135,6 @@ static bool load_configs(void)
         return false;
     }
 
-    yaml_config_lookup(config, "plugins.nickserv.nick");
-
     return true;
 }
 
@@ -158,8 +161,12 @@ int main(int ac, char **av)
         return 3;
     }
 
+    if (!alice_plugin_init()) {
+        return 3;
+    }
+
     alice_plugin_register_default();
-    alice_plugin_loadall();
+    alice_plugin_load();
 
     networks = irc_config_networks(irc_config);
     if (networks == NULL || networks->vlen == 0) {
