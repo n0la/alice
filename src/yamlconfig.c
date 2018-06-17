@@ -30,6 +30,34 @@ void yaml_config_free(yaml_config_t c)
     free(c);
 }
 
+bool yaml_config_string(yaml_config_t c, char const *name,
+                        char const **value, char const *def)
+{
+    yaml_config_t val = NULL;
+    bool ret = false;
+
+    val = yaml_config_lookup(c, name);
+    if (val == NULL) {
+        goto fail;
+    }
+
+    if (!yaml_config_is_scalar(val)) {
+        goto fail;
+    }
+
+    *value = val->root->data.scalar.value;
+
+    ret = true;
+
+fail:
+    if (value && !ret) {
+        *value = def;
+    }
+
+    yaml_config_free(val);
+    return ret;
+}
+
 yaml_config_t yaml_config_lookup(yaml_config_t conf, char const *path)
 {
     yaml_node_t *node = NULL;

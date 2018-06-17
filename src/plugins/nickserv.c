@@ -1,13 +1,51 @@
 #include <alice.h>
 #include <plugin.h>
 
-static int nickserv_login(void * arg, irc_client_t client, irc_message_t m)
+typedef struct {
+    char *password;
+    char *nickserv;
+} nickserv_t;
+
+static nickserv_t *nickserv_new(yaml_config_t c)
+{
+    nickserv_t *n = NULL;
+    char const *pass;
+    char const *nick;
+
+    if ((n = calloc(1, sizeof(nickserv_t))) == NULL) {
+        ALICE_ERR("nickserv: OOM");
+        return NULL;
+    }
+
+    if (!yaml_config_string(c, "password", &pass, NULL)) {
+        ALICE_ERR("nickserv: no password specified in configuration");
+        return NULL;
+    }
+
+    yaml_config_string(c, "nickserv", &nick, "nickserv");
+
+    n->password = strdup(pass);
+    n->nickserv = strdup(nick);
+
+    return n;
+}
+
+static void nickserv_free(nickserv_t *n)
+{
+    if (n == NULL) {
+        return;
+    }
+
+    free(n->password);
+    free(n->nickserv);
+    free(n);
+}
+
+static int nickserv_login(nickserv_t *n,
+                          irc_client_t client, irc_message_t m)
 {
     irc_message_t r = NULL;
-    irc_config_network_t c = irc_client_config(client);
     irc_t i = irc_client_irc(client);
-    char const *nickserv = irc_config_network_nickserv(c);
-    char const *password = irc_config_network_nickserv_password(c);
     char *nick = NULL;
 
     irc_getopt(i, ircopt_nick, &nick);
@@ -19,23 +57,23 @@ static int nickserv_login(void * arg, irc_client_t client, irc_message_t m)
         return 0;
     }
 
-    if (nickserv == NULL || password == NULL) {
+    if (n->nickserv == NULL || n->password == NULL) {
         return 0;
     }
 
-    r = irc_message_privmsg(nick, nickserv, "IDENTIFY %s", password);
+    r = irc_message_privmsg(nick, n->nickserv, "IDENTIFY %s", n->password);
     irc_queue(i, r);
 
     return 0;
 }
 
-static int nickserv_reclaimer(void *arg, irc_client_t client, irc_message_t m)
+static int nickserv_reclaimer(nickserv_t *n,
+                              irc_client_t client, irc_message_t m)
 {
     irc_message_t r = NULL;
-    irc_config_network_t c = irc_client_config(client);
     irc_t i = irc_client_irc(client);
-    char const *nickserv = irc_config_network_nickserv(c);
-    char const *password = irc_config_network_nickserv_password(c);
+    char const *nickserv = n->nickserv;
+    char const *password = n->password;
     char *nick = NULL, *altnick = NULL;
 
     /* look for error 433
@@ -79,14 +117,14 @@ static int nickserv_reclaimer(void *arg, irc_client_t client, irc_message_t m)
 
 static int nickserv_handle(void *arg, irc_client_t client, irc_message_t m)
 {
-    nickserv_login(arg, client, m);
-    nickserv_reclaimer(arg, client, m);
+    nickserv_login((nickserv_t*)arg, client, m);
+    nickserv_reclaimer((nickserv_t*)arg, client, m);
 }
 
 alice_plugin_t nickserv_plugin = {
     "nickserv",
-    NULL,
-    NULL,
+    (alice_plugin_new)nickserv_new,
+    (alice_plugin_free)nickserv_free,
     NULL,
     NULL,
     nickserv_handle

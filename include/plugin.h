@@ -4,6 +4,7 @@
 #include "alice.h"
 #include "cmd.h"
 #include "yamlconfig.h"
+#include "log.h"
 #include <stdbool.h>
 
 typedef void * (*alice_plugin_new)(yaml_config_t c);
