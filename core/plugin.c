@@ -1,6 +1,7 @@
 #include "plugin.h"
 #include "log.h"
 #include "yamlconfig.h"
+#include "config.h"
 
 static pa_t plugin_registry = NULL;
 static pa_t plugin_loaded = NULL;
@@ -50,8 +51,12 @@ fail:
 
 int alice_plugin_register_default(void)
 {
+#ifdef PLUGIN_DICE
     alice_plugin_register(&dice_plugin);
+#endif
+#ifdef PLUGIN_NICKSERV
     alice_plugin_register(&nickserv_plugin);
+#endif
 }
 
 int alice_plugin_register(alice_plugin_t *p)

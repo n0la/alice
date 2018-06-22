@@ -1,0 +1,7 @@
+#ifndef ALICE_CONFIG_H
+#define ALICE_CONFIG_H
+
+#cmakedefine PLUGIN_NICKSERV
+#cmakedefine PLUGIN_DICE
+
+#endif
